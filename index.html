@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0">
+		<title>极简测试 · 亡灵收藏家</title>
+		<link id="-gd-engine-icon" rel="icon" type="image/png" href="index.icon.png" />
+<link rel="apple-touch-icon" href="index.apple-touch-icon.png"/>
+
+		<style>
+html, body, #canvas {
+	margin: 0;
+	padding: 0;
+	border: 0;
+}
+
+body {
+	color: #eee7d8;
+	background-color: #101d20;
+	overflow: hidden;
+	touch-action: none;
+	font-family: "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB",
+		"Noto Sans CJK SC", "Source Han Sans SC", "WenQuanYi Micro Hei", sans-serif;
+}
+
+#canvas {
+	display: block;
+}
+
+#canvas:focus {
+	outline: none;
+}
+
+#status {
+	position: fixed;
+	inset: 0;
+	background:
+		radial-gradient(circle at 50% 38%, #173034 0%, #101d20 62%, #0b1416 100%);
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+	visibility: hidden;
+	z-index: 10;
+	text-align: center;
+}
+
+#status h1 {
+	margin: 0;
+	font-size: clamp(22px, 3.4vw, 40px);
+	font-weight: 600;
+	letter-spacing: 0.14em;
+	color: #72e4d2;
+}
+
+#status .sub {
+	margin: 14px 0 0;
+	font-size: clamp(13px, 1.5vw, 18px);
+	color: #afc0b9;
+	letter-spacing: 0.08em;
+}
+
+#status .bar {
+	position: relative;
+	width: min(520px, 70vw);
+	height: 8px;
+	margin: 38px 0 0;
+	background-color: #1a2c2e;
+	border: 1px solid #2f4a4d;
+	border-radius: 5px;
+	overflow: hidden;
+}
+
+#status-progress-fill {
+	position: absolute;
+	left: 0;
+	top: 0;
+	bottom: 0;
+	width: 0%;
+	background-color: #72e4d2;
+	transition: width 0.2s linear;
+}
+
+#status-progress-fill.indeterminate {
+	width: 35%;
+	animation: slide 1.1s ease-in-out infinite alternate;
+}
+
+@keyframes slide {
+	from { left: 0; }
+	to { left: 65%; }
+}
+
+#status-progress-text {
+	margin: 16px 0 0;
+	font-size: clamp(13px, 1.4vw, 17px);
+	color: #eee7d8;
+	font-variant-numeric: tabular-nums;
+}
+
+#status .hint {
+	margin: 30px 0 0;
+	font-size: clamp(12px, 1.3vw, 15px);
+	color: #7d918c;
+	line-height: 1.7;
+}
+
+#status-notice {
+	display: none;
+	max-width: min(680px, 84vw);
+	margin: 26px 0 0;
+	padding: 16px 22px;
+	background-color: #3a2126;
+	border: 1px solid #9b3943;
+	border-radius: 8px;
+	color: #f0dcdc;
+	font-size: clamp(13px, 1.4vw, 16px);
+	line-height: 1.8;
+	text-align: left;
+}
+		</style>
+	</head>
+	<body>
+		<canvas id="canvas">
+			您的浏览器不支持 canvas 标签，请更换浏览器。
+		</canvas>
+
+		<noscript>
+			本游戏需要启用 JavaScript 才能运行，请在浏览器设置中允许 JavaScript。
+		</noscript>
+
+		<div id="status">
+			<h1>亡灵收藏家</h1>
+			<p class="sub">极简测试 · 五层远征</p>
+			<div class="bar"><div id="status-progress-fill" class="indeterminate"></div></div>
+			<p id="status-progress-text">正在加载…</p>
+			<div id="status-notice"></div>
+			<p class="hint">
+				首次打开需要下载约 57 MB 的游戏数据，视网速可能需要几十秒。<br>
+				建议使用电脑或平板横屏试玩；加载期间请不要关闭页面。
+			</p>
+		</div>
+
+		<script src="index.js"></script>
+		<script>
+const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":20394172,"index.wasm":39514754},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
+// 本预设使用单线程网页模板（任何静态托管都能直接跑，无需 COOP/COEP 响应头）。
+const GODOT_THREADS_ENABLED = false;
+const engine = new Engine(GODOT_CONFIG);
+
+(function () {
+	const statusOverlay = document.getElementById('status');
+	const statusFill = document.getElementById('status-progress-fill');
+	const statusText = document.getElementById('status-progress-text');
+	const statusNotice = document.getElementById('status-notice');
+
+	let initializing = true;
+	let statusMode = '';
+
+	function setStatusMode(mode) {
+		if (statusMode === mode || !initializing) {
+			return;
+		}
+		if (mode === 'hidden') {
+			statusOverlay.remove();
+			initializing = false;
+			return;
+		}
+		statusOverlay.style.visibility = 'visible';
+		if (mode === 'progress') {
+			statusNotice.style.display = 'none';
+			statusText.style.display = 'block';
+		} else {
+			statusNotice.style.display = 'block';
+			statusText.style.display = 'none';
+		}
+		statusMode = mode;
+	}
+
+	function setStatusNotice(text) {
+		while (statusNotice.lastChild) {
+			statusNotice.removeChild(statusNotice.lastChild);
+		}
+		const lines = String(text).split('\n');
+		lines.forEach((line) => {
+			statusNotice.appendChild(document.createTextNode(line));
+			statusNotice.appendChild(document.createElement('br'));
+		});
+	}
+
+	function displayFailureNotice(err) {
+		console.error(err);
+		let message;
+		if (err instanceof Error) {
+			message = err.message;
+		} else if (typeof err === 'string') {
+			message = err;
+		} else {
+			message = '发生了未知错误。';
+		}
+		setStatusNotice('游戏启动失败：\n' + message +
+			'\n\n请尝试：\n· 使用最新版 Chrome、Edge、Firefox 或 Safari 打开\n· 确认浏览器已启用 WebGL 2.0 / 硬件加速\n· 刷新页面重试');
+		setStatusMode('notice');
+		initializing = false;
+	}
+
+	const missing = Engine.getMissingFeatures({
+		threads: GODOT_THREADS_ENABLED,
+	});
+
+	if (missing.length !== 0) {
+		const missingMsg = '当前浏览器缺少运行本游戏所需的功能：\n';
+		displayFailureNotice(missingMsg + missing.join('\n'));
+	} else {
+		setStatusMode('progress');
+		engine.startGame({
+			'onProgress': function (current, total) {
+				if (current > 0 && total > 0) {
+					const percent = Math.min(100, Math.round((current / total) * 100));
+					statusFill.classList.remove('indeterminate');
+					statusFill.style.width = percent + '%';
+					statusText.textContent = '正在加载… ' + percent + '%';
+				} else {
+					statusFill.classList.add('indeterminate');
+					statusText.textContent = '正在加载…';
+				}
+			},
+		}).then(() => {
+			setStatusMode('hidden');
+		}, displayFailureNotice);
+	}
+}());
+		</script>
+	</body>
+</html>
+
